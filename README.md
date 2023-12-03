@@ -96,7 +96,9 @@ func (l *GetVideoLogic) GetVideo(req *types.VideoReq) (resp *types.VideoRes, err
 ```
 
 ## 啟動服務
-1. 開啟etcd服務器，終端輸入etcd
+1. 開啟etcd服務器，終端輸入etcd (在專案根目錄執行)
 2. 開啟rpc服務 go run user.go 
 3. 開啟api服務 go run api.go
-### 如果遇到明明可以請求rpc但api始終報[rpc服務名稱].rpc未開啟->重開電腦
+### 如果遇到明明可以請求rpc但api始終報[rpc服務名稱].rpc未開啟
+1. 將yaml配置文欓中的地址改為localhost而非etcd
+2. 重開電腦
