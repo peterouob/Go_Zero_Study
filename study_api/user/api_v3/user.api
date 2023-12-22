@@ -1,0 +1,21 @@
+//入餐，一定要大寫
+type LoginRequest {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type UserInfoResponse {
+	UserId   uint   `json:"userId"`
+	Username string `json:"username"`
+}
+
+service users{
+	//試圖函數
+	@handler login
+	post /api/users/login (LoginRequest) returns (string )
+
+	@handler userinfo
+	get /api/users/userinfo  returns (UserInfoResponse)
+}
+
+// goctl api go -api user.api -dir .

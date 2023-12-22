@@ -102,3 +102,50 @@ func (l *GetVideoLogic) GetVideo(req *types.VideoReq) (resp *types.VideoRes, err
 ### 如果遇到明明可以請求rpc但api始終報[rpc服務名稱].rpc未開啟
 1. 將yaml配置文欓中的地址改為localhost而非etcd
 2. 重開電腦
+
+### 封裝response避免每次修改都重複編輯
+- 生成模板文件 `goctl template init`
+- 更改模板文件會再生成api文黨時進行變更
+```tpl
+{{if .HasResp}}resp, {{end}}err := l.{{.Call}}({{if .HasRequest}}&req{{end}})
+		// if err != nil {
+		// 	httpx.ErrorCtx(r.Context(), w, err)
+		// } else {
+		//	{{if .HasResp}}httpx.OkJsonCtx(r.Context(), w, resp){{else}}httpx.Ok(w){{end}}
+		// }
+		{{if .HasResp}}response.Response(r,w,resp,err){{else}}reponse.Response(r,w,nil,err){{end}}
+```
+- `goctl api go -api user.api -dir .`
+```api
+//入餐，一定要大寫
+type LoginRequest {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type UserInfoResponse {
+	UserId   uint   `json:"userId"`
+	Username string `json:"username"`
+}
+
+service users{
+	//試圖函數
+	@handler login
+	post /api/users/login (LoginRequest) returns (string )
+
+	@handler userinfo
+	get /api/users/userinfo  returns (UserInfoResponse)
+}
+
+// goctl api go -api user.api -dir .
+```
+
+```go
+resp, err := l.Login(&req)
+		// if err != nil {
+		// 	httpx.ErrorCtx(r.Context(), w, err)
+		// } else {
+		//	httpx.OkJsonCtx(r.Context(), w, resp)
+		// }
+		response.Response(r, w, resp, err)
+```
