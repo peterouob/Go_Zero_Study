@@ -149,3 +149,151 @@ resp, err := l.Login(&req)
 		// }
 		response.Response(r, w, resp, err)
 ```
+### 為api新增路由前綴
+```api
+//入餐，一定要大寫
+type LoginRequest {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type UserInfoResponse {
+	UserId   uint   `json:"userId"`
+	Username string `json:"username"`
+}
+
+@server (
+	prefix : /api/users
+)
+
+service users{
+	//試圖函數
+	@handler login
+	post /login (LoginRequest) returns (string )
+
+	@handler userinfo
+	get /userinfo  returns (UserInfoResponse)
+}
+
+// goctl api go -api user.api -dir .
+```
+
+### 為api新增JWT
+```api
+//入餐，一定要大寫
+type LoginRequest {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type UserInfoResponse {
+	UserId   uint   `json:"userId"`
+	Username string `json:"username"`
+}
+
+@server (
+	prefix : /api/users
+)
+
+service users{
+	//試圖函數
+	@handler login
+	post /login (LoginRequest) returns (string )
+
+}
+
+@server (
+	prefix : /api/users
+	jwt : Auth //固定寫法
+)
+
+service users{
+
+	@handler userinfo
+	get /userinfo  returns (UserInfoResponse)
+}
+
+// goctl api go -api user.api -dir .
+```
+
+### 添加生成jwt操作
+#### Auth中的JWT到etc資料夾裡面的users.yaml配置
+#### 對測試api的工具新增Bearer Token請求頭輸入token資料來驗證和解析
+```go
+package jwt
+
+import (
+	"errors"
+	"github.com/golang-jwt/jwt/v4"
+	"time"
+)
+
+type JwtPayload struct {
+	UserId   uint   `json:"userId"`
+	Username string `json:"username"`
+	Role     int    `json:"role"`
+}
+
+type CustomClaims struct {
+	JwtPayload
+	jwt.RegisteredClaims
+}
+
+func GetToken(user JwtPayload, accessSecret string, expires int64) (string, error) {
+	claims := CustomClaims{user, jwt.RegisteredClaims{ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour + time.Duration(expires)))}}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(accessSecret))
+}
+
+func ParseToken(tokenStr string, accessSecret string, expires int64) (*CustomClaims, error) {
+	token, err := jwt.ParseWithClaims(tokenStr, &CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return []byte(accessSecret), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if claims, ok := token.Claims.(*CustomClaims); ok && token.Valid {
+		return claims, nil
+	}
+	return nil, errors.New("invalid token")
+}
+
+```
+
+### 修改logic/loginlogic.go以獲得jwt
+```go
+func (l *LoginLogic) Login(req *types.LoginRequest) (resp string, err error) {
+	// todo: add your logic here and delete this line
+	//獲取配置文件
+	auth := l.svcCtx.Config.Auth
+	token, err := jwt.GetToken(jwt.JwtPayload{
+		UserId:   1,
+		Username: "peter",
+		Role:     1,
+	}, auth.AccessSecret, auth.AccessExpire)
+	if err != nil {
+		return "", err
+	}
+	return token, nil
+}
+```
+### 修改logic/userinfologic.go以解析jwt並獲得值
+```go
+
+func (l *UserinfoLogic) Userinfo() (resp *types.UserInfoResponse, err error) {
+	// todo: add your logic here and delete this line
+
+	//獲取token值
+	userid := l.ctx.Value("userId").(json.Number)
+
+	//遇到不知道的類型錯誤檢查方式
+	//fmt.Printf("%v %T",userid,userid)
+	uuid, _ := userid.Int64()
+	
+	username := l.ctx.Value("username").(string)
+	return &types.UserInfoResponse{
+		UserId:   uint(uuid),
+		Username: username,
+	}, nil
+}
+```
