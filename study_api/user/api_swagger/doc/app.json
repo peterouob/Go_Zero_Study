@@ -1,0 +1,113 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "",
+    "version": ""
+  },
+  "host": "localhost:8888",
+  "basePath": "/",
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/api/users/login": {
+      "post": {
+        "operationId": "login",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/string"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": "入餐，一定要大寫",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/LoginRequest"
+            }
+          }
+        ],
+        "requestBody": {},
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/users/userinfo": {
+      "get": {
+        "operationId": "userinfo",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/UserInfoResponse"
+            }
+          }
+        },
+        "requestBody": {},
+        "tags": [
+          "users"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "LoginRequest": {
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        }
+      },
+      "title": "LoginRequest",
+      "required": [
+        "username",
+        "password"
+      ]
+    },
+    "UserInfoResponse": {
+      "type": "object",
+      "properties": {
+        "userId": {
+          "$ref": "#/definitions/uint"
+        },
+        "username": {
+          "type": "string"
+        }
+      },
+      "title": "UserInfoResponse",
+      "required": [
+        "userId",
+        "username"
+      ]
+    }
+  },
+  "securityDefinitions": {
+    "apiKey": {
+      "type": "apiKey",
+      "description": "Enter JWT Bearer token **_only_**",
+      "name": "Authorization",
+      "in": "header"
+    }
+  },
+  "security": [
+    {
+      "apiKey": []
+    }
+  ]
+}
