@@ -3,10 +3,9 @@ package logic
 import (
 	"context"
 	"fmt"
-	"go_zero/study_model/user/model"
-
-	"go_zero/study_model/user/api/internal/svc"
-	"go_zero/study_model/user/api/internal/types"
+	"go_zero/study_model/user_gorm/api/internal/svc"
+	"go_zero/study_model/user_gorm/api/internal/types"
+	"go_zero/study_model/user_gorm/models"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -27,13 +26,15 @@ func NewLoginLogic(ctx context.Context, svcCtx *svc.ServiceContext) *LoginLogic 
 
 func (l *LoginLogic) Login(req *types.LoginRequest) (resp string, err error) {
 	// todo: add your logic here and delete this line
-	res, err := l.svcCtx.UserModel.Insert(l.ctx, &model.User{
-		Username: "peter",
-		Password: "63674782",
-	})
+	//err = l.svcCtx.DB.Create(&models.GUserModel{
+	//	Username: "defer",
+	//	Password: "123456",
+	//}).Error
+	user := &models.UserModel{}
+	err = l.svcCtx.DB.Find(user).Error
 	if err != nil {
 		return "", err
 	}
-	fmt.Println(res)
+	fmt.Println(user)
 	return "success", nil
 }

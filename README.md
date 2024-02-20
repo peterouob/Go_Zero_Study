@@ -321,3 +321,197 @@ func JwtUnauthorizedResult(w http.ResponseWriter, r *http.Request, err error) {
 }
 
 ```
+
+## 操作Mysql
+1. 使用sqlx
+  - 編寫model/user.sql檔案
+```sql
+create table user
+(
+    id bigint AUTO_INCREMENT,
+    username varchar(36) NOT NULL,
+    password varchar(64) default '',
+    UNIQUE name_index (username),
+    PRIMARY KEY (id)
+)ENGINE = InnoDB COLLATE utf8mb4_general_ci;
+
+# goctl model mysql ddl --src user.sql --dir .
+
+```
+ - 設定Config和依賴
+
+```go
+package config
+
+import "github.com/zeromicro/go-zero/rest"
+
+type Config struct {
+	rest.RestConf
+	Mysql struct {
+		Database string
+	}
+}
+
+```
+```go
+package svc
+
+import (
+	"github.com/zeromicro/go-zero/core/stores/sqlx"
+	"go_zero/study_model/user/api/internal/config"
+	"go_zero/study_model/user/model"
+)
+
+type ServiceContext struct {
+	Config    config.Config
+	UserModel model.UserModel
+}
+
+func NewServiceContext(c config.Config) *ServiceContext {
+	mysqlConn := sqlx.NewMysql(c.Mysql.Database)
+	return &ServiceContext{
+		Config:    c,
+		UserModel: model.NewUserModel(mysqlConn),
+	}
+}
+```
+ - 編寫測試logic/loginlogic.go
+```go
+
+func (l *LoginLogic) Login(req *types.LoginRequest) (resp string, err error) {
+// todo: add your logic here and delete this line
+  res, err := l.svcCtx.UserModel.Insert(l.ctx, &model.User{
+    Username: "peter",
+    Password: "63674782",
+  })
+  if err != nil {
+    return "", err
+  }
+    fmt.Println(res)
+    return "success", nil
+}
+```
+ - 編寫etc/users.yaml
+```yaml
+Name: users
+Host: 0.0.0.0
+Port: 8888
+Mysql:
+  Database: root:123456@tcp(127.0.0.1:3306)/zero_db?charset=utf8mb4&parseTime=True&loc=
+```
+
+2. 使用gorm
+   - 編寫common/init_gorm/enter.go來啟動db連接
+```go
+package init_gorm
+
+import (
+	"fmt"
+	"go_zero/study_model/user_gorm/models"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
+)
+
+func InitGorm(MysqlDatabase string) *gorm.DB {
+	db, err := gorm.Open(mysql.Open(MysqlDatabase))
+	if err != nil {
+		panic("connect to database error")
+	}
+	fmt.Println("success to connect")
+	db.AutoMigrate(&models.UserModel{})
+	return db
+}
+```
+  - 編寫models/user_model.go
+```go
+package models
+
+import "gorm.io/gorm"
+
+type UserModel struct {
+	gorm.Model
+	Username string `gorm:"size:32" json:"username"`
+	Password string `gorm:"size:64" json:"password"`
+}
+```
+  - 編寫svc/servicecontext.go和config/config.go
+```go
+package svc
+
+import (
+	"go_zero/common/init_gorm"
+	"go_zero/study_model/user_gorm/api/internal/config"
+	"gorm.io/gorm"
+)
+
+type ServiceContext struct {
+	Config config.Config
+	DB     *gorm.DB
+}
+
+func NewServiceContext(c config.Config) *ServiceContext {
+	return &ServiceContext{
+		Config: c,
+		DB:     init_gorm.InitGorm(c.Mysql.Database),
+	}
+}
+
+```
+
+```go
+package config
+
+import "github.com/zeromicro/go-zero/rest"
+
+type Config struct {
+	rest.RestConf
+	Mysql struct {
+		Database string
+	}
+}
+
+```
+  - 編寫logic/loginlogic.go測試gorm是否可以正確運行
+```go
+package logic
+
+import (
+	"context"
+	"fmt"
+	"go_zero/study_model/user_gorm/api/internal/svc"
+	"go_zero/study_model/user_gorm/api/internal/types"
+	"go_zero/study_model/user_gorm/models"
+
+	"github.com/zeromicro/go-zero/core/logx"
+)
+
+type LoginLogic struct {
+	logx.Logger
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
+}
+
+func NewLoginLogic(ctx context.Context, svcCtx *svc.ServiceContext) *LoginLogic {
+	return &LoginLogic{
+		Logger: logx.WithContext(ctx),
+		ctx:    ctx,
+		svcCtx: svcCtx,
+	}
+}
+
+func (l *LoginLogic) Login(req *types.LoginRequest) (resp string, err error) {
+	// todo: add your logic here and delete this line
+	//err = l.svcCtx.DB.Create(&models.GUserModel{
+	//	Username: "defer",
+	//	Password: "123456",
+	//}).Error
+	user := &models.UserModel{}
+	err = l.svcCtx.DB.Find(user).Error
+	if err != nil {
+		return "", err
+	}
+	fmt.Println(user)
+	return "success", nil
+}
+
+```
